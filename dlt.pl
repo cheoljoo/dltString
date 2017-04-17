@@ -1,8 +1,8 @@
 #!/bin/perl
 
 our %gStr;          # $gStr{string} = index
-our @gStrCount;     # $gStrCount[index] = count
-our @gNum;
+our %gStrCount;     # $gStrCount{index} = count
+our @gNum;          # $gNum{index} = string
 our %gLengthCount;  # $gLengthCount{length of string} = count
 our %gLengthText;   # $gLengthCount{length of string} = concatenation of strings
 our $gMaxCount = 1;
@@ -29,12 +29,12 @@ foreach $filename (@ARGV){
 					#print "S $1 --> $s";
 					if($gStr{$1} != 0){
 						$num = $gStr{$1};
-						$gStrCount[$num] ++;
+						$gStrCount{$num} ++;
 					} else {
 						$gStr{$1} = $gMaxCount;
 						$gNum[$gMaxCount] = $1;
 						$num = $gMaxCount;
-						$gStrCount[$num] = 1;
+						$gStrCount{$num} = 1;
 						$gLengthCount{length($1)} ++;
 						$gLengthText{length($1)} .= "#\t\t$1\n";
 						$gMaxCount ++;
@@ -45,12 +45,12 @@ foreach $filename (@ARGV){
 					#print "C $1 --> $s";
 					if($gStr{$1} != 0){
 						$num = $gStr{$1};
-						$gStrCount[$num] ++;
+						$gStrCount{$num} ++;
 					} else {
 						$gStr{$1} = $gMaxCount;
 						$gNum[$gMaxCount] = $1;
 						$num = $gMaxCount;
-						$gStrCount[$num] = 1;
+						$gStrCount{$num} = 1;
 						$gLengthCount{length($1)} ++;
 						$gLengthText{length($1)} .= "#\t\t$1\n";
 						$gMaxCount ++;
@@ -67,12 +67,12 @@ foreach $filename (@ARGV){
 			#print "D $2 --> $s";
 			if($gStr{$2} != 0){
 				$num = $gStr{$2};
-				$gStrCount[$num] ++;
+				$gStrCount{$num} ++;
 			} else {
 				$gStr{$2} = $gMaxCount;
 				$gNum[$gMaxCount] = $2;
 				$num = $gMaxCount;
-				$gStrCount[$num] = 1;
+				$gStrCount{$num} = 1;
 				$gLengthCount{length($2)} ++;
 				$gLengthText{length($2)} .= "#\t\t$2\n";
 				$gMaxCount ++;
@@ -99,9 +99,33 @@ foreach $filename (@ARGV){
 }
 
 open(FO,">","./chg/string_list.chg");
-for (my $i = 1 ; $i < $gMaxCount;$i++){
-	print FO "!~$i : $gStrCount[$i] -> \[$gNum[$i]\]\n";
+#for (my $i = 1 ; $i < $gMaxCount;$i++){
+#print FO "!~$i : $gStrCount{$i} -> \[$gNum[$i]\]\n";
+#}
+#print FO "\n\n\n";
+print FO "# Sorted String and Index Table.\n";
+my $goodSize = 0;
+my $badSize = 0;
+foreach my $key (sort {$gStrCount{$b} <=> $gStrCount{$a}} keys %gStrCount){
+	$strLen = length($gNum[$key]);
+	$temp = "$key";
+	$keyLen = length($temp) + 2 ;       # 2 is !~
+	#print "$key : len $keyLen\n";
+	if($strLen > $keyLen){
+		$goodSize += ( ($strLen - $keyLen) * $gStrCount{$key} );
+		print FO "A";
+	} elsif($strLen < $keyLen){
+		$badSize += ( ($keyLen - $strLen) * $gStrCount{$key} );
+		print FO "D";
+	} else {
+		print FO "=";
+	}
+	print FO "!~ (index) $key : (used count) $gStrCount{$key} -> (len) $strLen  : (origin string) \[$gNum[$key]\]\n";
 }
+print FO "Advantages : $goodSize Bytes\n";
+print FO "Disadvantages : $badSize Bytes\n";
+my $tadv = $goodSize - $badSize;
+print FO "Total Advantages : $tadv Bytes\n";
 print FO "\n\n\n";
 foreach my $key (sort {$gLengthCount{$b} <=> $gLengthCount{$a}} keys %gLengthCount){
 	print FO "Length : $key  => Count : $gLengthCount{$key}\n$gLengthText{$key}";
