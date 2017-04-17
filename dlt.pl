@@ -99,13 +99,9 @@ foreach $filename (@ARGV){
 }
 
 open(FO,">","./chg/string_list.chg");
-#for (my $i = 1 ; $i < $gMaxCount;$i++){
-#print FO "!~$i : $gStrCount{$i} -> \[$gNum[$i]\]\n";
-#}
-#print FO "\n\n\n";
-print FO "# Sorted String and Index Table.\n";
 my $goodSize = 0;
 my $badSize = 0;
+print FO "# Sorted String and Index Table.\n";
 foreach my $key (sort {$gStrCount{$b} <=> $gStrCount{$a}} keys %gStrCount){
 	$strLen = length($gNum[$key]);
 	$temp = "$key";
@@ -127,7 +123,43 @@ print FO "Disadvantages : $badSize Bytes\n";
 my $tadv = $goodSize - $badSize;
 print FO "Total Advantages : $tadv Bytes\n";
 print FO "\n\n\n";
+
+print FO "# Index Table\n";
+for (my $i = 1 ; $i < $gMaxCount;$i++){
+	print FO "!~$i : $gStrCount{$i} -> \[$gNum[$i]\]\n";
+}
+print FO "\n\n\n";
+
 foreach my $key (sort {$gLengthCount{$b} <=> $gLengthCount{$a}} keys %gLengthCount){
 	print FO "Length : $key  => Count : $gLengthCount{$key}\n$gLengthText{$key}";
 }
+close(FO);
+
+open(FO,">","./chg/dltString.c");
+print FO "#include <stdio.h>\n\n";
+print FO "char *dltString\[ $gMaxCount \] = {\n";
+print FO "\t\"\!\~\"\n";
+for (my $i = 1 ; $i < $gMaxCount;$i++){
+	$strLen = length($gNum[$i]);
+	print FO "\t, \"$gNum[$i]\"\n";
+}
+print FO "};\n\n";
+print FO "
+char *getDltString(int i){
+	if(i >= $gMaxCount ){
+		return NULL;
+	}
+	return dltString[i];
+}
+
+#ifdef TEST
+int main(void){
+	int i=0;
+	for(i=0; i< $gMaxCount ; i++){
+		printf(\"\%d : \%s\\n\",i,getDltString(i));
+	}
+	return 0;
+}
+#endif // TEST
+";
 close(FO);
