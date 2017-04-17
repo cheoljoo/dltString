@@ -27,35 +27,49 @@ foreach $filename (@ARGV){
 				# This is for DLT_STRING
 				if($s =~ /DLT_STRING\s*\(\s*\"([^"]*)\"\s*\)/){
 					#print "S $1 --> $s";
-					if($gStr{$1} != 0){
-						$num = $gStr{$1};
-						$gStrCount{$num} ++;
+					$strLen = length($1);
+					$temp = "$gMaxCount";
+					$keyLen = length($temp) + 2 ;       # 2 is !~
+					if($strLen > $keyLen){
+						if($gStr{$1} != 0){
+							$num = $gStr{$1};
+							$gStrCount{$num} ++;
+						} else {
+							$gStr{$1} = $gMaxCount;
+							$gNum[$gMaxCount] = $1;
+							$num = $gMaxCount;
+							$gStrCount{$num} = 1;
+							$gLengthCount{length($1)} ++;
+							$gLengthText{length($1)} .= "#\t\t$1\n";
+							$gMaxCount ++;
+						}
+						# to distinguish between processed DLT_STRING and unproessed it.
+						$s =~ s/DLT_STRING\s*\(\s*\"([^"]*)\"\s*\)/DLT_SSSTRING\(\"!~$num\"\)/;
 					} else {
-						$gStr{$1} = $gMaxCount;
-						$gNum[$gMaxCount] = $1;
-						$num = $gMaxCount;
-						$gStrCount{$num} = 1;
-						$gLengthCount{length($1)} ++;
-						$gLengthText{length($1)} .= "#\t\t$1\n";
-						$gMaxCount ++;
+						$s =~ s/(DLT_STRING)(\s*\(\s*\"[^"]*\"\s*\))/DLT_SSSTRING$2/;
 					}
-					# to distinguish between processed DLT_STRING and unproessed it.
-					$s =~ s/DLT_STRING\s*\(\s*\"([^"]*)\"\s*\)/DLT_SSSTRING\(\"!~$num\"\)/;
 				} elsif($s =~ /DLT_CSTRING\s*\(\s*\"([^"]*)\"\s*\)/){    # copy from DLT_sRING
 					#print "C $1 --> $s";
-					if($gStr{$1} != 0){
-						$num = $gStr{$1};
-						$gStrCount{$num} ++;
+					$strLen = length($1);
+					$temp = "$gMaxCount";
+					$keyLen = length($temp) + 2 ;       # 2 is !~
+					if($strLen > $keyLen){
+						if($gStr{$1} != 0){
+							$num = $gStr{$1};
+							$gStrCount{$num} ++;
+						} else {
+							$gStr{$1} = $gMaxCount;
+							$gNum[$gMaxCount] = $1;
+							$num = $gMaxCount;
+							$gStrCount{$num} = 1;
+							$gLengthCount{length($1)} ++;
+							$gLengthText{length($1)} .= "#\t\t$1\n";
+							$gMaxCount ++;
+						}
+						$s =~ s/DLT_CSTRING\s*\(\s*\"([^"]*)\"\s*\)/DLT_SSCSTRING\(\"!~$num\"\)/;
 					} else {
-						$gStr{$1} = $gMaxCount;
-						$gNum[$gMaxCount] = $1;
-						$num = $gMaxCount;
-						$gStrCount{$num} = 1;
-						$gLengthCount{length($1)} ++;
-						$gLengthText{length($1)} .= "#\t\t$1\n";
-						$gMaxCount ++;
+						$s =~ s/(DLT_CSTRING)(\s*\(\s*\"[^"]*\"\s*\))/DLT_SSCSTRING$2/;
 					}
-					$s =~ s/DLT_CSTRING\s*\(\s*\"([^"]*)\"\s*\)/DLT_SSCSTRING\(\"!~$num\"\)/;
 				} else {
 					last;
 				}
