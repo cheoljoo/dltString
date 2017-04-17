@@ -150,7 +150,9 @@ foreach my $key (sort {$gLengthCount{$b} <=> $gLengthCount{$a}} keys %gLengthCou
 close(FO);
 
 open(FO,">","./chg/dltString.c");
-print FO "#include <stdio.h>\n\n";
+print FO "#include <stdio.h>\n";
+print FO "#include <string.h>\n";
+print FO "#include <stdlib.h>\n\n";
 print FO "char *dltString\[ $gMaxCount \] = {\n";
 print FO "\t\"\!\~\"\n";
 for (my $i = 1 ; $i < $gMaxCount;$i++){
@@ -159,19 +161,42 @@ for (my $i = 1 ; $i < $gMaxCount;$i++){
 }
 print FO "};\n\n";
 print FO "
-char *getDltString(int i){
-	if(i >= $gMaxCount ){
+#define DELIMITER \"!~\"
+char *getDltStringIndex(int i){
+	if( (i >= $gMaxCount) || (i <= 0) ){
 		return NULL;
 	}
 	return dltString[i];
+}
+
+char *getDltString(char *s){
+	if(strlen(s) > 2){
+		if(strncmp(DELIMITER,s,2) == 0){
+			return getDltStringIndex(atoi(s + 2));
+		} else {
+			return s;
+		}
+	} else {
+		return s;
+	}
 }
 
 #ifdef TEST
 int main(void){
 	int i=0;
 	for(i=0; i< $gMaxCount ; i++){
-		printf(\"\%d : \%s\\n\",i,getDltString(i));
+		printf(\"\%d : \%s\\n\",i,getDltStringIndex(i));
 	}
+	printf(\"!~~ : %s\\n\",getDltString(\"!~~\"));
+	printf(\"22 : %s\\n\",getDltString(\"22\"));
+	printf(\"223 : %s\\n\",getDltString(\"223\"));
+	printf(\"STRING : %s\\n\",getDltString(\"STRING\"));
+	printf(\"!~ : %s\\n\",getDltString(\"!~\"));
+	printf(\"!~1 : %s\\n\",getDltString(\"!~1\"));
+	printf(\"!~22 : %s\\n\",getDltString(\"!~22\"));
+	printf(\"!~22MM : %s\\n\",getDltString(\"!~22MM\"));
+	printf(\"!~M22 : %s\\n\",getDltString(\"!~M22\"));
+	printf(\"!~1000 : %s\\n\",getDltString(\"!~1000\"));
 	return 0;
 }
 #endif // TEST
