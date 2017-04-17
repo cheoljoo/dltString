@@ -8,6 +8,7 @@ our %gLengthText;   # $gLengthCount{length of string} = concatenation of strings
 our $gMaxCount = 1;
 our $total_context_org; # to check whether original file is changed or not between org and chg.
 our $total_context_chg;
+
 my $num;
 foreach $filename (@ARGV){
 	print "$filename\n";
@@ -79,19 +80,25 @@ foreach $filename (@ARGV){
 			# DLT_LOG_STRING_INT
 			# DLT_LOG_STRING_UINT
 			#print "D $2 --> $s";
-			if($gStr{$2} != 0){
-				$num = $gStr{$2};
-				$gStrCount{$num} ++;
+			$strLen = length($2);
+			$temp = "$gMaxCount";
+			$keyLen = length($temp) + 2 ;       # 2 is !~
+			if($strLen > $keyLen){
+				if($gStr{$2} != 0){
+					$num = $gStr{$2};
+					$gStrCount{$num} ++;
+				} else {
+					$gStr{$2} = $gMaxCount;
+					$gNum[$gMaxCount] = $2;
+					$num = $gMaxCount;
+					$gStrCount{$num} = 1;
+					$gLengthCount{length($2)} ++;
+					$gLengthText{length($2)} .= "#\t\t$2\n";
+					$gMaxCount ++;
+				}
+				$s = "$1\"!~$num\"$3";
 			} else {
-				$gStr{$2} = $gMaxCount;
-				$gNum[$gMaxCount] = $2;
-				$num = $gMaxCount;
-				$gStrCount{$num} = 1;
-				$gLengthCount{length($2)} ++;
-				$gLengthText{length($2)} .= "#\t\t$2\n";
-				$gMaxCount ++;
 			}
-			$s = "$1\"!~$num\"$3";
 		}
 		$s =~ s/DLT_SSCSTRING/DLT_CSTRING/g;
 		$s =~ s/DLT_SSSTRING/DLT_STRING/g;
@@ -115,11 +122,18 @@ foreach $filename (@ARGV){
 open(FO,">","./chg/string_list.chg");
 my $goodSize = 0;
 my $badSize = 0;
+my $tAdv = 0;       # Total Advantage Size
+my $tSize = 0;       # Total Size
+my $tLine = 0;       # Total Line of DLT LOG line
+						# except DLT_STRING(temp)
+						# except DLT_STRING("11") // short msg
 print FO "# Sorted String and Index Table.\n";
 foreach my $key (sort {$gStrCount{$b} <=> $gStrCount{$a}} keys %gStrCount){
 	$strLen = length($gNum[$key]);
 	$temp = "$key";
 	$keyLen = length($temp) + 2 ;       # 2 is !~
+	$tSize += ( $strLen * $gStrCount{$key} );
+	$tLine += $gStrCount{$key};
 	#print "$key : len $keyLen\n";
 	if($strLen > $keyLen){
 		$goodSize += ( ($strLen - $keyLen) * $gStrCount{$key} );
@@ -132,10 +146,15 @@ foreach my $key (sort {$gStrCount{$b} <=> $gStrCount{$a}} keys %gStrCount){
 	}
 	print FO "!~ (index) $key : (used count) $gStrCount{$key} -> (len) $strLen  : (origin string) \[$gNum[$key]\]\n";
 }
-print FO "Advantages : $goodSize Bytes\n";
-print FO "Disadvantages : $badSize Bytes\n";
-my $tadv = $goodSize - $badSize;
-print FO "Total Advantages : $tadv Bytes\n";
+print FO "Advantages in Matched LOG: $goodSize Bytes\n";
+print FO "Disadvantages in Matched LOG: $badSize Bytes\n";
+my $tAdv = $goodSize - $badSize;
+print FO "Total Size in Matched LOG: $tSize Bytes\n";
+print FO "Total Advantages in Matched LOG: $tAdv Bytes\n";
+my $tAdvPercentage = 100 * ($tAdv / $tSize);
+print FO "Total Advantages % in Matched LOG: $tAdvPercentage% Saved\n";
+$temp = 100 * (($tAdv) / ($tSize + 8 * $tLine));
+print FO "Total Advantages % considerd app,ctx size(8) in Matched LOG: $temp% Saved\n";
 print FO "\n\n\n";
 
 print FO "# Index Table\n";
@@ -150,29 +169,30 @@ foreach my $key (sort {$gLengthCount{$b} <=> $gLengthCount{$a}} keys %gLengthCou
 close(FO);
 
 open(FO,">","./chg/dltString.c");
-print FO "#include <stdio.h>\n";
-print FO "#include <string.h>\n";
-print FO "#include <stdlib.h>\n\n";
-print FO "char *dltString\[ $gMaxCount \] = {\n";
+print FO "
+#include \"dltString.h\"
+
+";
+
+print FO "char *dltString\[ DLT_STRING_MAX_COUNT \] = {\n";
 print FO "\t\"\!\~\"\n";
 for (my $i = 1 ; $i < $gMaxCount;$i++){
 	$strLen = length($gNum[$i]);
-	print FO "\t, \"$gNum[$i]\"\n";
+	print FO "\t, \"$gNum[$i]\"   \t// $i\n";
 }
 print FO "};\n\n";
 print FO "
-#define DELIMITER \"!~\"
 char *getDltStringIndex(int i){
-	if( (i >= $gMaxCount) || (i <= 0) ){
+	if( (i >= DLT_STRING_MAX_COUNT) || (i <= 0) ){
 		return NULL;
 	}
 	return dltString[i];
 }
 
 char *getDltString(char *s){
-	if(strlen(s) > 2){
-		if(strncmp(DELIMITER,s,2) == 0){
-			return getDltStringIndex(atoi(s + 2));
+	if(strlen(s) > DELIMITER_SIZE){
+		if(strncmp(DELIMITER,s,DELIMITER_SIZE) == 0){
+			return getDltStringIndex(atoi(s + DELIMITER_SIZE));
 		} else {
 			return s;
 		}
@@ -184,7 +204,7 @@ char *getDltString(char *s){
 #ifdef TEST
 int main(void){
 	int i=0;
-	for(i=0; i< $gMaxCount ; i++){
+	for(i=0; i< DLT_STRING_MAX_COUNT ; i++){
 		printf(\"\%d : \%s\\n\",i,getDltStringIndex(i));
 	}
 	printf(\"!~~ : %s\\n\",getDltString(\"!~~\"));
@@ -200,5 +220,22 @@ int main(void){
 	return 0;
 }
 #endif // TEST
+";
+close(FO);
+
+open(FO,">","./chg/dltString.h");
+print FO "
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define DELIMITER \"!~\"
+#define DELIMITER_SIZE			2
+#define DLT_STRING_MAX_COUNT	$gMaxCount
+
+extern char *dltString\[ DLT_STRING_MAX_COUNT \];
+extern char *getDltStringIndex(int i);
+extern char *getDltString(char *s);
+
 ";
 close(FO);
